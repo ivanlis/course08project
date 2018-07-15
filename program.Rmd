@@ -10,7 +10,13 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-training <- read.csv("pml-training.csv")
-testing <- read.csv("pml-testing.csv")
+training <- read.csv("pml-training.csv", na.strings = c("NA", "#DIV/0!"))
+testing <- read.csv("pml-testing.csv", na.strings = c("NA", "#DIV/0!"))
+
+
+library(dplyr)
+training <- mutate(training, cvtd_timestamp = as.POSIXct(training$cvtd_timestamp, "", "%d/%m/%Y %H:%M"))
+
+ggpairs(training, upper=list(continuous="points", combo="dot_no_facet"))
 
 ```
