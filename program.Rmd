@@ -1,0 +1,16 @@
+---
+title: "Workout Correctness Prediction"
+author: "Ivan Lysiuchenko"
+date: "July 15, 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+training <- read.csv("pml-training.csv")
+testing <- read.csv("pml-testing.csv")
+
+```
