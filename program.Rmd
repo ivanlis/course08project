@@ -10,13 +10,37 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r}
-training <- read.csv("pml-training.csv", na.strings = c("NA", "#DIV/0!"))
-testing <- read.csv("pml-testing.csv", na.strings = c("NA", "#DIV/0!"))
+trainingOriginal <- read.csv("pml-training.csv", na.strings = c("NA", "#DIV/0!"))
+testingOriginal <- read.csv("pml-testing.csv", na.strings = c("NA", "#DIV/0!"))
 
 
 library(dplyr)
-training <- mutate(training, cvtd_timestamp = as.POSIXct(training$cvtd_timestamp, "", "%d/%m/%Y %H:%M"))
+trainingOriginal <- mutate(trainingOriginal, cvtd_timestamp = 
+                               as.POSIXct(trainingOriginal$cvtd_timestamp, "", "%d/%m/%Y %H:%M"))
 
-ggpairs(training, upper=list(continuous="points", combo="dot_no_facet"))
+#ggpairs(training, upper=list(continuous="points", combo="dot_no_facet"))
+
+selectedColumns <- c()
+naProportions <- c()
+
+for (i in 1:ncol(trainingOriginal))
+{
+    naProp <- sum(is.na(trainingOriginal[, i])) / nrow(trainingOriginal)
+    if (naProp < 0.3)
+    {
+        selectedColumns <- c(selectedColumns, i)
+        naProportions <- c(naProportions, naProp)
+    }
+}
+
+training <- trainingOriginal[, selectedColumns]
+
+training <- training[ , 
+                      !(names(training) %in% c(  c("X", "user_name", 
+                                                   "raw_timestamp_part_1", "raw_timestamp_part_2",
+                                                   "cvtd_timestamp", "new_window", "num_window"),
+                                                 grep("^total_accel", names(training), 
+                                                      value = TRUE)     ))   ]
+
 
 ```
