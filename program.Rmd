@@ -11,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ```{r}
 trainingOriginal <- read.csv("pml-training.csv", na.strings = c("NA", "#DIV/0!"))
-testingOriginal <- read.csv("pml-testing.csv", na.strings = c("NA", "#DIV/0!"))
+validationOriginal <- read.csv("pml-testing.csv", na.strings = c("NA", "#DIV/0!"))
 
 
 library(dplyr)
@@ -33,14 +33,189 @@ for (i in 1:ncol(trainingOriginal))
     }
 }
 
-training <- trainingOriginal[, selectedColumns]
+trainingFiltered <- trainingOriginal[, selectedColumns]
 
-training <- training[ , 
-                      !(names(training) %in% c(  c("X", "user_name", 
+trainingFiltered <- trainingFiltered[ , 
+                      !(names(trainingFiltered) %in% c(  c("X", "user_name", 
                                                    "raw_timestamp_part_1", "raw_timestamp_part_2",
-                                                   "cvtd_timestamp", "new_window", "num_window"),
-                                                 grep("^total_accel", names(training), 
-                                                      value = TRUE)     ))   ]
+                                                   "cvtd_timestamp", "new_window", "num_window") #,
+                                                 #grep("^total_accel", names(training), 
+                                                  #    value = TRUE)     
+                                                 ))   ]
+
+library(caret)
+
+set.seed(2018)
+inTrain <- createDataPartition(trainingFiltered$classe, p = 0.7, list = FALSE)
+training <- trainingFiltered[inTrain, ]
+testing <- trainingFiltered[-inTrain,]
+
+modFitRpart <- train(classe ~ ., method = "rpart", data = training)
+predictRpartTrain <- predict(modFitRpart, training)
+predictRpartTest <- predict(modFitRpart, testing)
+accTrain <- sum(predictRpartTrain == training$classe) / nrow(training)
+accTest <- sum(predictRpartTest == testing$classe) / nrow(testing)
+
+modFitRf <- train(classe ~ ., method = "rf", data = training)
+predictRfTrain <- predict(modFitRf, training)
+predictRfTest <- predict(modFitRf, testing)
+accTrain <- sum(predictRfTrain == training$classe) / nrow(training)
+accTest <- sum(predictRfTest == testing$classe) / nrow(testing)
+
+library(randomForest)
+modFitRf1 <- randomForest(classe ~ ., data = training)
+#predictRf1Train <- predict(modFitRf1, training)
+#predictRf1Test <- predict(modFitRf1, testing)
+#accTrain <- sum(predictRf1Train == training$classe) / nrow(training)
+#accTest <- sum(predictRf1Test == testing$classe) / nrow(testing)
 
 
+set.seed(2018)
+train <- trainingFiltered
+modFitRfCv <- rfcv(training[, !(names(training) == "classe")], training$classe, cv.fold = 5)
+
+g <- ggplot(data = data.frame(
+    x = modFitRfCv$n.var[length(modFitRfCv$n.var):1], 
+    y = modFitRfCv$error.cv[length(modFitRfCv$error.cv):1]), 
+    mapping = aes(x = x, y = y)) + 
+    geom_line()
+
+
+
+
+
+modFitGbm <- train(classe ~ ., method = "gbm", data = training, verbose = FALSE)
+
+```
+
+
+
+
+
+
+```{r}
+#kFolds <- 5
+#library(caret)
+#folds <- createFolds(trainingFiltered$classe, kFolds)
+
+## compute average AUC for k folds
+## library needed for roc.area()
+#library(verification)
+#areasUc <- c()
+
+
+#for (i in 1:kFolds)
+#{
+#    inTrain <- folds[[i]]
+#    training <- trainingFiltered[inTrain, ]
+#    testing <- trainingFiltered[-inTrain, ]
+# 
+#    modFitRf1 <- randomForest(classe ~ ., data = training)
+#    #predictRf1Train <- predict(modFitRf1, training)
+#    predictRf1Test <- predict(modFitRf1, testing)
+#    #accTrain <- sum(predictRf1Train == training$classe) / nrow(training)
+#    #accTest <- sum(predictRf1Test == testing$classe) / nrow(testing)
+#    rocObj <- 
+#    areasUc <- c(areasUc, roc.area(testing$classe, predictRf1Test)$A)
+#}
+#
+```
+
+
+
+
+
+
+### Data Preprocessing
+
+It can be seen that some columns of the training dataset contain too
+many NA values, so they will not help us in building the prediction
+model. We omit the columns having at least 30% NA.
+Also we remove the columns that don't describe any parameter of how
+the excercise was done (user name, timestamps, etc.)
+
+```{r message=FALSE}
+
+# Read the data
+trainingOriginal <- read.csv("pml-training.csv", na.strings = c("NA", "#DIV/0!"))
+testingOriginal <- read.csv("pml-testing.csv", na.strings = c("NA", "#DIV/0!"))
+
+
+# Remove columns with too many na values
+selectedColumns <- c()
+naProportions <- c()
+
+for (i in 1:ncol(trainingOriginal))
+{
+    naProp <- sum(is.na(trainingOriginal[, i])) / nrow(trainingOriginal)
+    if (naProp < 0.3)
+    {
+        selectedColumns <- c(selectedColumns, i)
+        naProportions <- c(naProportions, naProp)
+    }
+}
+
+trainingFiltered <- trainingOriginal[, selectedColumns]
+
+# Remove the columns which are irrelevant to our prediction
+trainingFiltered <- trainingFiltered[ , 
+                      !(names(trainingFiltered) %in% c(  c("X", "user_name", 
+                                                   "raw_timestamp_part_1",
+                                                   "raw_timestamp_part_2",
+                                                   "cvtd_timestamp", "new_window",
+                                                   "num_window") #,
+                                                 #grep("^total_accel", names(training), 
+                                                  #    value = TRUE)     
+                                                 ))   ]
+```
+
+### Building the model
+
+The problem we are dealing with is a classification problem. The Random Forest methods
+are among the best for this kind of tasks. Let's fit a model using the filtered training
+dataset.
+
+```{r message=FALSE}
+# Fit a random forest
+library(randomForest)
+modFitRf <- randomForest(classe ~ ., data = trainingFiltered)
+```
+
+TODO: some graphs describing the model
+
+### Cross-validation and out-of-sample error estimation
+
+```{r echo=FALSE}
+cvP = 0.1
+cvN = 19
+```
+
+To see if our choice is acceptable we cross validate our model withholding 
+`r cvP * 100`% of data at each of `r cvN` iterations.
+
+```{r message=FALSE}
+# Cross validate our model
+library(rfUtilities)
+rfCrossValid <- rf.crossValidation(modFitRf, 
+                                   trainingFiltered[, 
+                                                    !(names(trainingFiltered) == "classe")],
+                                   p = cvP, n = cvN)
+
+# The OOB error as an estimation of the out-of-sample error
+```
+
+One of the cross validation results is the cross validation out-of-bag (OOB) error.
+It can be taken as an estimate for the out-of-sample error, i.e. the error when
+the outcome is predicted on data not used to train the model.
+
+TODO: give the cross validated OOB error value; some cross validation graphs.
+
+### Predicting on the test dataset
+
+Let's use the built model to predict the classes for the `r nrow(testingOriginal)`
+test cases.
+
+```{r}
+predictRfTest <- predict(modFitRf, testingOriginal)
+predictRfTest
 ```
