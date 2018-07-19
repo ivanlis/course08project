@@ -1,7 +1,7 @@
 ---
 title: "Workout Correctness Prediction"
 author: "Ivan Lysiuchenko"
-date: "July 15, 2018"
+date: "July 20, 2018"
 output: html_document
 ---
 
@@ -51,6 +51,16 @@ trainingFiltered <- trainingFiltered[ ,
                                                  ))   ]
 ```
 
+If we try to represent graphically the dependence of the outcome on individual predictors, it's 
+not too clear how we can describe it. It can be seen on the following plot where the colors
+represent the way the excercise was done as a function of two of the predictor variables.
+
+```{r}
+library(ggplot2)
+g <- ggplot(data = trainingFiltered, 
+            mapping = aes(x = roll_belt, y = yaw_belt, color = classe)) + geom_point()
+```
+
 ### Building the model
 
 The problem we are dealing with is a classification problem. The Random Forest methods
@@ -63,7 +73,6 @@ library(randomForest)
 modFitRf <- randomForest(classe ~ ., data = trainingFiltered)
 ```
 
-TODO: some graphs describing the model
 
 ### Cross-validation and out-of-sample error estimation
 
@@ -78,27 +87,34 @@ To see if our choice is acceptable we cross validate our model withholding
 ```{r message=FALSE}
 # Cross validate our model
 library(rfUtilities)
-rfCrossValid <- rf.crossValidation(modFitRf, 
-                                   trainingFiltered[, 
-                                                    !(names(trainingFiltered) == "classe")],
-                                   p = cvP, n = cvN)
+#rfCrossValid <- rf.crossValidation(modFitRf, 
+#                                   trainingFiltered[, 
+#                                                    !(names(trainingFiltered) =="classe")],
+#                                   p = cvP, n = cvN)
 
 cv2 <- rfcv(trainingFiltered[, !(names(trainingFiltered) == "classe")], trainingFiltered$classe, cv.fold = 10)
 
-
-# The OOB error as an estimation of the out-of-sample error
 ```
 
-One of the cross validation results is the cross validation out-of-bag (OOB) error.
-It can be taken as an estimate for the out-of-sample error, i.e. the error when
-the outcome is predicted on data not used to train the model.
+We're using all the 52 variables as predictors. The cross validation error is 
+`r cv2$error.cv[1]`. It can be considered an estimate of the out-of-sample error.
 
-TODO: give the cross validated OOB error value; some cross validation graphs.
+The following graph shows the cross validation error as a function of the number of
+variables taken as predictors.
+
+```{r}
+g <- ggplot(data = data.frame(x = cv2$n.var, y = cv2$error.cv), 
+            mapping = aes(x = x, y = y)) + 
+    geom_line() + geom_point() + 
+    labs(x = "Number of variables", y = "Cross validation error", 
+         title = "Cross validation error depending on the number of variables")
+```
 
 The ten most important variables are:
 
 ```{r echo=FALSE}
-data.frame(names = names(trainingFiltered)[order(-modFitRf$importance)], measure = modFitRf$importance[order(-modFitRf$importance)])[1:10,]
+data.frame(names = names(trainingFiltered)[order(-modFitRf$importance)], 
+           measure = modFitRf$importance[order(-modFitRf$importance)])[1:10,]
 ```
 
 
