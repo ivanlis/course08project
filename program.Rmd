@@ -16,14 +16,14 @@ It can be seen that some columns of the training dataset contain too
 many NA values, so they will not help us in building the prediction
 model. We omit the columns having at least 30% NA.
 Also we remove the columns that don't describe any parameter of how
-the excercise was done (user name, timestamps, etc.)
+the excercise was done (user name, timestamps, etc.). After this filtering
+no there are no NA values in the data frame. We have 52 potential predictors.
 
 ```{r message=FALSE}
 
 # Read the data
 trainingOriginal <- read.csv("pml-training.csv", na.strings = c("NA", "#DIV/0!"))
 testingOriginal <- read.csv("pml-testing.csv", na.strings = c("NA", "#DIV/0!"))
-
 
 # Remove columns with too many na values
 selectedColumns <- c()
@@ -51,14 +51,17 @@ trainingFiltered <- trainingFiltered[ ,
                                                  ))   ]
 ```
 
-If we try to represent graphically the dependence of the outcome on individual predictors, it's 
-not too clear how we can describe it. It can be seen on the following plot where the colors
-represent the way the excercise was done as a function of two of the predictor variables.
+If we represent graphically the dependence of the outcome on individual predictors, it's 
+not too clear how we can describe it. An example can be the following plot where the colors
+represent the way the excercise was done. The dots are plotted on the plane spanned by 
+two of the predictor variables.
 
-```{r}
+```{r echo=FALSE, message=FALSE}
 library(ggplot2)
 g <- ggplot(data = trainingFiltered, 
-            mapping = aes(x = roll_belt, y = yaw_belt, color = classe)) + geom_point()
+            mapping = aes(x = roll_belt, y = yaw_belt, color = classe)) + geom_point() +
+    labs(x = "roll_belt", y = "yaw_belt", title = "Distribution of the outcome")
+g
 ```
 
 ### Building the model
@@ -68,55 +71,53 @@ are among the best for this kind of tasks. Let's fit a model using the filtered 
 dataset.
 
 ```{r message=FALSE}
-# Fit a random forest
 library(randomForest)
-modFitRf <- randomForest(classe ~ ., data = trainingFiltered)
+set.seed(2018)
+modFitRf <- randomForest(classe ~ ., data = trainingFiltered, ntree = 100)
 ```
 
+`r modFitRf$ntree` trees have been built for us. Let's see if the number of trees we chose is sufficient. Here we plot the error by every of the 6 outcome classes as a function of the number of trees.
+
+```{r echo=FALSE, message=FALSE}
+plot(modFitRf, main = "Error vs number of trees")
+```
+
+The plot shows that with the model having `r modFitRf$ntree` trees, its error has already
+reached the minimum on the training set.
 
 ### Cross-validation and out-of-sample error estimation
 
-```{r echo=FALSE}
-cvP = 0.1
-cvN = 19
-```
-
-To see if our choice is acceptable we cross validate our model withholding 
-`r cvP * 100`% of data at each of `r cvN` iterations.
+Our choices are based on a 10-fold cross validation procedure shown in this section.
 
 ```{r message=FALSE}
-# Cross validate our model
-library(rfUtilities)
-#rfCrossValid <- rf.crossValidation(modFitRf, 
-#                                   trainingFiltered[, 
-#                                                    !(names(trainingFiltered) =="classe")],
-#                                   p = cvP, n = cvN)
-
-cv2 <- rfcv(trainingFiltered[, !(names(trainingFiltered) == "classe")], trainingFiltered$classe, cv.fold = 10)
-
+set.seed(2018)
+cv2 <- rfcv(trainingFiltered[, !(names(trainingFiltered) == "classe")], 
+            trainingFiltered$classe, cv.fold = 10, ntree = 100)
 ```
 
 We're using all the 52 variables as predictors. The cross validation error is 
 `r cv2$error.cv[1]`. It can be considered an estimate of the out-of-sample error.
 
 The following graph shows the cross validation error as a function of the number of
-variables taken as predictors.
+variables taken as predictors. It turns out that taking more variables reduces
+the cross validation error. Hence the use of all the 52 predictors in the model we built
+is justified.
 
-```{r}
+```{r message=FALSE}
 g <- ggplot(data = data.frame(x = cv2$n.var, y = cv2$error.cv), 
             mapping = aes(x = x, y = y)) + 
     geom_line() + geom_point() + 
     labs(x = "Number of variables", y = "Cross validation error", 
          title = "Cross validation error depending on the number of variables")
+g
 ```
 
 The ten most important variables are:
 
 ```{r echo=FALSE}
-data.frame(names = names(trainingFiltered)[order(-modFitRf$importance)], 
+data.frame(name = names(trainingFiltered)[order(-modFitRf$importance)], 
            measure = modFitRf$importance[order(-modFitRf$importance)])[1:10,]
 ```
-
 
 ### Predicting on the test dataset
 
