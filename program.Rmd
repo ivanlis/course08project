@@ -90,9 +90,9 @@ reached the minimum on the training set.
 Our choices are based on a 10-fold cross validation procedure shown in this section.
 
 ```{r message=FALSE}
-set.seed(2018)
-cv2 <- rfcv(trainingFiltered[, !(names(trainingFiltered) == "classe")], 
-            trainingFiltered$classe, cv.fold = 10, ntree = 100)
+    set.seed(2018)
+    cv2 <- rfcv(trainingFiltered[, !(names(trainingFiltered) == "classe")], 
+                trainingFiltered$classe, cv.fold = 10, ntree = 100)
 ```
 
 We're using all the 52 variables as predictors. The cross validation error is 
@@ -128,3 +128,12 @@ test cases.
 predictRfTest <- predict(modFitRf, testingOriginal)
 predictRfTest
 ```
+
+### Conclusion
+
+In this work we built a Random Forest model predicting the class of excercise execution
+(correct and 5 types of common mistakes). We use 52 predictors and 100 trees.
+10-fold cross validation was used to demonstrate that the choice of Random Forest is
+reasonable. The cross validation error we got is `r cv2$error.cv[1]`. The model we built
+was used to predict on a test set containing no labels. According to the quiz result
+our model predicted correctly in all the 20 cases.

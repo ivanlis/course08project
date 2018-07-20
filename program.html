@@ -173,9 +173,9 @@ modFitRf &lt;- randomForest(classe ~ ., data = trainingFiltered, ntree = 100)</c
 <div id="cross-validation-and-out-of-sample-error-estimation" class="section level3">
 <h3>Cross-validation and out-of-sample error estimation</h3>
 <p>Our choices are based on a 10-fold cross validation procedure shown in this section.</p>
-<pre class="r"><code>set.seed(2018)
-cv2 &lt;- rfcv(trainingFiltered[, !(names(trainingFiltered) == &quot;classe&quot;)], 
-            trainingFiltered$classe, cv.fold = 10, ntree = 100)</code></pre>
+<pre class="r"><code>    set.seed(2018)
+    cv2 &lt;- rfcv(trainingFiltered[, !(names(trainingFiltered) == &quot;classe&quot;)], 
+                trainingFiltered$classe, cv.fold = 10, ntree = 100)</code></pre>
 <p>We’re using all the 52 variables as predictors. The cross validation error is 0.0036694. It can be considered an estimate of the out-of-sample error.</p>
 <p>The following graph shows the cross validation error as a function of the number of variables taken as predictors. It turns out that taking more variables reduces the cross validation error. Hence the use of all the 52 predictors in the model we built is justified.</p>
 <pre class="r"><code>g &lt;- ggplot(data = data.frame(x = cv2$n.var, y = cv2$error.cv), 
@@ -206,6 +206,10 @@ predictRfTest</code></pre>
 <pre><code>##  1  2  3  4  5  6  7  8  9 10 11 12 13 14 15 16 17 18 19 20 
 ##  B  A  B  A  A  E  D  B  A  A  B  C  B  A  E  E  A  B  B  B 
 ## Levels: A B C D E</code></pre>
+</div>
+<div id="conclusion" class="section level3">
+<h3>Conclusion</h3>
+<p>In this work we built a Random Forest model predicting the class of excercise execution (correct and 5 types of common mistakes). We use 52 predictors and 100 trees. 10-fold cross validation was used to demonstrate that the choice of Random Forest is reasonable. The cross validation error we got is 0.0036694. The model we built was used to predict on a test set containing no labels. According to the quiz result our model predicted correctly in all the 20 cases.</p>
 </div>
 
 
